@@ -5,6 +5,36 @@
 
 namespace bit_io {
 
+size_t useful_bits(u8 t) {
+    auto l = t;
+    u8 m = 0x7f;
+    size_t s = 8;
+    while(m != 0) {
+        l &= m;
+        if(l != t) break;
+        m >>= 1;
+        --s;
+    }
+    return s;
+
+}
+
+template<typename T>
+size_t useful_bits(T t) {
+    union {
+        T v;
+        std::array<u8, sizeof(T)> arr;
+    } u{t};
+    auto v = u;
+    auto s = u.arr.size();
+
+    while (s != 0) {
+        v.arr[s--] = 0;
+        if(v.v != u.v) break;
+    }
+    return s*8 + useful_bits(u.arr[s]);
+};
+
 template<typename T, size_t SX = BIT_SIZE(T)>
 struct type_t : public IBitIOType {
     T val;
