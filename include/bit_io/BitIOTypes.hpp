@@ -21,9 +21,10 @@ constexpr size_t useful_bits(T t) {
     return s;
 }
 
+
 template<typename T, size_t SX = BIT_SIZE(T)>
 struct type_t : public IBitIOType {
-    T val;
+    T val{0};
 
     type_t() {}
 
