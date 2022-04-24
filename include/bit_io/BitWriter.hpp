@@ -3,6 +3,7 @@
 
 #include "BitIOBase.hpp"
 #include <vector>
+#include <cstddef>
 
 namespace bit_io {
 
