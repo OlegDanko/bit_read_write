@@ -8,4 +8,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(bit_io INTERFACE)
 
-target_include_directories(bit_io INTERFACE include/)
+target_include_directories(bit_io INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
