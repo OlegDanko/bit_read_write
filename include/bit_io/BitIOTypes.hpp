@@ -22,14 +22,14 @@ constexpr size_t useful_bits(T t) {
 }
 
 
-template<typename T, size_t SX = BIT_SIZE(T)>
+template<typename T, size_t SIZE = BIT_SIZE(T)>
 struct type_t : public IBitIOType {
     T val{0};
 
     type_t() {}
 
-    type_t(T _x)
-        : val(_x) {}
+    type_t(T v)
+        : val(v) {}
 
     type_t(BitReader& buf) {
         read(buf);
@@ -44,66 +44,99 @@ struct type_t : public IBitIOType {
     }
 
     size_t bit_size() const override {
-        return SX;
+        return SIZE;
     }
 
     void write(BitWriter& buf) const override {
-        buf.template write<SX>(val);
+        buf.template write<SIZE>(val);
     }
 
     void read(BitReader& buf) override {
-        if(!buf.template read<SX>(val)) throw "Packet incomplete\n";
+        if(!buf.template read<SIZE>(val)) throw "Packet incomplete\n";
     }
 
     operator T() const { return val; }
 };
 
-
 using flag = type_t<u8, 1>;
+
+template<typename...>
+class many;
+
+template<typename T>
+void write_many(BitWriter& bw, T& t) { t.write(bw); }
+template<typename T>
+void read_many(BitReader& br, T& t) { t.read(br);}
+
+template<typename T, typename ... Ts>
+void write_many(BitWriter& bw, T& t, Ts&... ts) { t.write(bw); write_many(bw, ts...); }
+template<typename T, typename ... Ts>
+void read_many(BitReader& br, T& t, Ts&... ts) { t.read(br); read_many(br, ts...); }
+
+template<size_t...>
+struct sizes;
+template<size_t S>
+struct sizes<S> {
+    static constexpr size_t count() { return 1; }
+    static constexpr size_t sum() { return S; }
+    template<size_t I>
+    static constexpr size_t get() {
+        static_assert(I == 0, "Out of bound size requested");
+        return S;
+    }
+};
+template<size_t S, size_t ... SS>
+struct sizes<S, SS...> {
+    static constexpr size_t count() { return 1 + sizes<SS...>::count(); }
+    static constexpr size_t sum() { return S + sizes<SS...>::sum(); }
+    template<size_t I>
+    static constexpr size_t get() {
+        if constexpr (I == 0) return S;
+        else return sizes<SS...>::template get<I - 1>();
+    }
+};
 
 template<typename T, size_t... SIZES>
 class vec : public IBitIOType {
-    template<size_t... _SIZES>
-    class sizes_access {
-        template<size_t S>
-        static size_t _count() { return 1; }
-        template<size_t S, size_t... SS>
-        static size_t _count() { return 1 + _count<SS...>(); }
+    using sa = sizes<SIZES...>;
+public:
+    std::array<T, sa::count()> vals{0};
 
-        template<size_t ID, size_t S>
-        static size_t _get() {
-            static_assert (ID == 0, "Index put of bounds");
-            return S;
-        }
-        template<size_t ID, size_t S, size_t... SS>
-        static size_t _get() { return ID == 0 ? S : get<ID - 1, SS...>(); }
+private:
+    template<size_t I , typename ... Args>
+    void _set_vals(Args ... args);
 
-        template<size_t S>
-        static size_t _sum() { return S; }
-        template<size_t S, size_t... SS>
-        static size_t _sum() { return S + _count<SS...>(); }
-    public:
-        static size_t count() { return _count<_SIZES...>(); }
-        template<size_t ID>
-        static size_t get() { return _get<ID, _SIZES...>(); }
-        static size_t sum() { return _sum<_SIZES...>();}
-    };
-    using sa = sizes_access<SIZES...>;
-    std::array<T, sa::count()> vals;
+    template<size_t I , typename A>
+    void _set_vals(A a) {
+        vals[I] = a;
+    }
+
+    template<size_t I = 0, typename A, typename ... Args>
+    void _set_vals(A a, Args ... args) {
+        if(I == vals.size()) return;
+        vals[I] = a;
+        _set_vals<I + 1>(args...);
+    }
+
     template<size_t ID = 0>
-    void _write(BitWriter& bw) {
-        bw.template write<sa::get<ID>()>(vals[ID]);
-        if(ID < sa::count())
-            _write<ID + 1>(bw);
+    void _write(BitWriter& bw) const {
+        bw.template write<sa::template get<ID>()>(vals[ID]);
+        if constexpr (sa::count() <= ID + 1) return;
+        else _write<ID + 1>(bw);
     }
     template<size_t ID = 0>
     void _read(BitReader& br) {
-        br.template read<sa::get<ID>()>(vals[ID]);
-        if(ID < sa::count())
-            _read<ID + 1>(br);
+        br.template read<sa::template get<ID>()>(vals[ID]);
+        if constexpr (sa::count() <= ID + 1) return;
+        else _read<ID + 1>(br);
     }
 public:
-    vec(BitReader& br) { read(br); }
+    template<typename ... Args>
+    vec(Args ... args) { _set_vals(args...); }
+    vec(BitReader& br) {
+        for(auto& v : vals) v = 0;
+        read(br);
+    }
 
     size_t bit_size() const override { return sa::sum(); }
     void write(BitWriter& bw) const override { _write(bw); }
@@ -114,23 +147,39 @@ public:
 };
 
 template<typename T, size_t SX = BIT_SIZE(T), size_t SY = SX>
-struct vec2 : public vec<T, SX, SY> {
-    using base = vec<T, SX, SY>;
-    T& x() { return base::template get<0>(); }
-    T& y() { return base::template get<1>(); }
+struct vec2 : IBitIOType {
+    type_t<T, SX> x;
+    type_t<T, SY> y;
+    void write(BitWriter& bw) const override { write_many(bw, x, y); }
+    void read(BitReader& bw) override { read_many(bw, x, y); }
+    size_t bit_size() const override { return sizes<SX, SY>::sum(); }
+    vec2(T x = 0, T y = 0, T z = 0) : x(x), y(y) {}
+    vec2(BitReader& br) { read(br); }
 };
 
-
 template<typename T, size_t SX = BIT_SIZE(T), size_t SY = SX, size_t SZ = SX>
-struct vec3 : public vec2<T, SX, SY> {
-    using base = vec2<T, SX, SY>;
-    T& z() { return base::template get<2>(); }
+struct vec3 : IBitIOType {
+    type_t<T, SX> x;
+    type_t<T, SY> y;
+    type_t<T, SZ> z;
+    void write(BitWriter& bw) const override { write_many(bw, x, y, z); }
+    void read(BitReader& bw) override { read_many(bw, x, y, z); }
+    size_t bit_size() const override { return sizes<SX, SY, SZ>::sum(); }
+    vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
+    vec3(BitReader& br) { read(br); }
 };
 
 template<typename T, size_t SX = BIT_SIZE(T), size_t SY = SX, size_t SZ = SX, size_t SA = SX>
-struct vec4 : public vec3<T, SX, SY, SZ> {
-    using base = vec3<T, SX, SY, SZ>;
-    T& a() { return base::template get<3>(); }
+struct vec4 : public IBitIOType {
+    type_t<T, SX> x;
+    type_t<T, SY> y;
+    type_t<T, SZ> z;
+    type_t<T, SZ> a;
+    void write(BitWriter& bw) const override { write_many(bw, x, y, z, a); }
+    void read(BitReader& bw) override { read_many(bw, x, y, z, a); }
+    size_t bit_size() const override { return sizes<SX, SY, SZ>::sum(); }
+    vec4(T x = 0, T y = 0, T z = 0, T a = 0) : x(x), y(y), z(z), a(a) {}
+    vec4(BitReader& br) { read(br); }
 };
 
 }
