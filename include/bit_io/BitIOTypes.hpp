@@ -31,6 +31,8 @@ struct type_t : public IBitIOType {
     type_t(T v)
         : val(v) {}
 
+    type_t(const type_t& t) : val(t.val) {}
+
     type_t(BitReader& buf) {
         read(buf);
     }
@@ -154,6 +156,7 @@ struct vec2 : IBitIOType {
     void read(BitReader& bw) override { read_many(bw, x, y); }
     size_t bit_size() const override { return sizes<SX, SY>::sum(); }
     vec2(T x = 0, T y = 0, T z = 0) : x(x), y(y) {}
+    vec2(decltype(x) x, decltype(y) y) : x(x), y(y) {}
     vec2(BitReader& br) { read(br); }
 };
 
@@ -166,6 +169,7 @@ struct vec3 : IBitIOType {
     void read(BitReader& bw) override { read_many(bw, x, y, z); }
     size_t bit_size() const override { return sizes<SX, SY, SZ>::sum(); }
     vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
+    vec3(decltype(x) x, decltype(y) y, decltype(z) z) : x(x), y(y), z(z) {}
     vec3(BitReader& br) { read(br); }
 };
 
@@ -179,6 +183,7 @@ struct vec4 : public IBitIOType {
     void read(BitReader& bw) override { read_many(bw, x, y, z, a); }
     size_t bit_size() const override { return sizes<SX, SY, SZ>::sum(); }
     vec4(T x = 0, T y = 0, T z = 0, T a = 0) : x(x), y(y), z(z), a(a) {}
+    vec4(decltype(x) x, decltype(y) y, decltype(z) z, decltype(a) a) : x(x), y(y), z(z), a(a) {}
     vec4(BitReader& br) { read(br); }
 };
 
