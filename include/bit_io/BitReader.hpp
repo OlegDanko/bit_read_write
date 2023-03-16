@@ -8,7 +8,7 @@
 namespace bit_io {
 
 class BitReader : private BitIOBase {
-    const std::vector<u8> &buf;
+    const buffer_t &buf;
     size_t bytes_offset = 0;
     u8 bits_offset = 0;
 
@@ -26,7 +26,7 @@ class BitReader : private BitIOBase {
 
 
 public:
-    BitReader(const std::vector<u8> &bit_buffer) : buf(bit_buffer) {}
+    BitReader(const buffer_t &bit_buffer) : buf(bit_buffer) {}
     template<size_t B, typename T>
     bool read(T& t) {
         static_assert(B != 0, "Can't read 0 bits");

@@ -8,7 +8,7 @@
 namespace bit_io {
 
 class BitWriter : private BitIOBase {
-    std::vector<u8>& buf;
+    buffer_t& buf;
     size_t bytes_offset = 0;
     u8 bits_offset = 0;
 
@@ -29,7 +29,7 @@ class BitWriter : private BitIOBase {
     }
 
 public:
-    BitWriter(std::vector<u8>& bit_buffer) : buf(bit_buffer) {}
+    BitWriter(buffer_t& bit_buffer) : buf(bit_buffer) {}
 
     template<size_t B, typename T>
     bool write(const T& t) {

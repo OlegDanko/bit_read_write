@@ -1,12 +1,14 @@
 #ifndef BIT_IO_BITIOBASE_H
 #define BIT_IO_BITIOBASE_H
 #include <array>
+#include <vector>
 #include <cstdint>
 
 namespace bit_io {
 
 using u8 = uint8_t;
 using u16 = uint16_t;
+using buffer_t = std::vector<u8>;
 
 #define BIT_SIZE(X) (sizeof(X)*8)
 

@@ -66,14 +66,14 @@ template<typename...>
 class many;
 
 template<typename T>
-void write_many(BitWriter& bw, T& t) { t.write(bw); }
+void write_many(BitWriter& bw, const T& t) { t.write(bw); }
 template<typename T>
-void read_many(BitReader& br, T& t) { t.read(br);}
+void read_many(BitReader& br, const T& t) { t.read(br);}
 
 template<typename T, typename ... Ts>
-void write_many(BitWriter& bw, T& t, Ts&... ts) { t.write(bw); write_many(bw, ts...); }
+void write_many(BitWriter& bw, const T& t, const Ts&... ts) { t.write(bw); write_many(bw, ts...); }
 template<typename T, typename ... Ts>
-void read_many(BitReader& br, T& t, Ts&... ts) { t.read(br); read_many(br, ts...); }
+void read_many(BitReader& br, const T& t, const Ts&... ts) { t.read(br); read_many(br, ts...); }
 
 template<size_t...>
 struct sizes;
